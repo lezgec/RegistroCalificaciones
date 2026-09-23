@@ -16,12 +16,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Resources\logo.ico" />
+    <Content Include="Resources\logo.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Resources\header.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </EmbeddedResource>
   </ItemGroup>
 

@@ -30,7 +30,7 @@ jobs:
       - name: Restaurar dependencias
         run: dotnet restore RegistroCalificaciones.csproj
 
-      - name: Publicar aplicación portable
+      - name: Publicar aplicación
         run: >
           dotnet publish RegistroCalificaciones.csproj
           -c Release
@@ -42,13 +42,35 @@ jobs:
           -p:DebugSymbols=false
           -o publish
 
-      - name: Crear ZIP
+      - name: Crear ZIP portable
         shell: pwsh
         run: |
           if (Test-Path "RegistroCalificaciones-Windows-x64.zip") {
             Remove-Item "RegistroCalificaciones-Windows-x64.zip"
           }
           Compress-Archive -Path "publish\*" -DestinationPath "RegistroCalificaciones-Windows-x64.zip"
+
+      - name: Instalar Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Crear instalador Setup.exe
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $releaseVersion = "${{ inputs.version }}"
+          } else {
+            $releaseVersion = "${{ github.ref_name }}"
+          }
+
+          $cleanVersion = $releaseVersion.TrimStart("v")
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+
+          if (-not (Test-Path $iscc)) {
+            throw "No se encontró Inno Setup en $iscc"
+          }
+
+          & $iscc "/DMyAppVersion=$cleanVersion" "installer.iss"
 
       - name: Publicar Release en GitHub
         uses: softprops/action-gh-release@v2
@@ -61,11 +83,21 @@ jobs:
 
             Aplicación de escritorio para Windows desarrollada en C# con WinForms y SQLite.
 
-            ### Descarga
-            Descarga `RegistroCalificaciones-Windows-x64.zip`, descomprime el archivo y ejecuta `RegistroCalificaciones.exe`.
+            ### Instalación recomendada
+            Descarga **RegistroCalificaciones-Setup-x64.exe** y sigue el asistente de instalación.
 
-            - Windows 64 bits
-            - No requiere instalar .NET 8
-            - La base de datos se crea automáticamente en el equipo del usuario
+            El instalador:
+            - instala la aplicación para el usuario actual;
+            - agrega un acceso directo al menú Inicio;
+            - permite crear un acceso directo en el escritorio;
+            - registra la aplicación para poder desinstalarla desde Configuración de Windows;
+            - no requiere instalar .NET 8 por separado.
+
+            ### Versión portable
+            También puedes descargar **RegistroCalificaciones-Windows-x64.zip**, descomprimirlo y ejecutar `RegistroCalificaciones.exe`.
+
+            La base de datos SQLite se crea automáticamente en el almacenamiento local del usuario.
           generate_release_notes: true
-          files: RegistroCalificaciones-Windows-x64.zip
+          files: |
+            installer-output/RegistroCalificaciones-Setup-x64.exe
+            RegistroCalificaciones-Windows-x64.zip
