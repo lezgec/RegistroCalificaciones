@@ -1,0 +1,71 @@
+name: Publicar versión para Windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versión de la aplicación (ej. v1.0.0)"
+        required: true
+        default: "v1.0.0"
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Configurar .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restaurar dependencias
+        run: dotnet restore RegistroCalificaciones.csproj
+
+      - name: Publicar aplicación portable
+        run: >
+          dotnet publish RegistroCalificaciones.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=None
+          -p:DebugSymbols=false
+          -o publish
+
+      - name: Crear ZIP
+        shell: pwsh
+        run: |
+          if (Test-Path "RegistroCalificaciones-Windows-x64.zip") {
+            Remove-Item "RegistroCalificaciones-Windows-x64.zip"
+          }
+          Compress-Archive -Path "publish\*" -DestinationPath "RegistroCalificaciones-Windows-x64.zip"
+
+      - name: Publicar Release en GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          target_commitish: master
+          name: Registro de Calificaciones ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          body: |
+            ## Registro de Calificaciones
+
+            Aplicación de escritorio para Windows desarrollada en C# con WinForms y SQLite.
+
+            ### Descarga
+            Descarga `RegistroCalificaciones-Windows-x64.zip`, descomprime el archivo y ejecuta `RegistroCalificaciones.exe`.
+
+            - Windows 64 bits
+            - No requiere instalar .NET 8
+            - La base de datos se crea automáticamente en el equipo del usuario
+          generate_release_notes: true
+          files: RegistroCalificaciones-Windows-x64.zip
